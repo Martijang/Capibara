@@ -3,6 +3,18 @@
 version = 4
 
 [[package]]
+name = "Capibara"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "figlet-rs",
+ "rand 0.10.1",
+ "reqwest",
+ "tokio",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -500,18 +512,6 @@ dependencies = [
  "http",
  "http-body",
  "pin-project-lite",
-]
-
-[[package]]
-name = "http-larper"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "figlet-rs",
- "rand 0.10.1",
- "reqwest",
- "tokio",
 ]
 
 [[package]]
