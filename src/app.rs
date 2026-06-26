@@ -1,12 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 
 use crate::{banner::BannerMaker, requester::Requester};
-
-#[derive(Debug, Clone, Copy, PartialEq, ValueEnum)]
-enum Method{
-    Get,
-    Post,
-}
+use capibara::request::Method;
 
 #[allow(unused)]
 ///Basic GET/POST requester written in rust
@@ -26,7 +21,8 @@ struct Cli{
     status: Option<bool>
 }
 
-
+#[allow(unused)]
+#[derive(Debug)]
 pub struct App{
     args: Cli,
     req: Requester,
@@ -35,7 +31,11 @@ pub struct App{
 
 impl App{
     pub fn new() -> Self{
-        Self { args: Cli::parse(), req: Requester::new(), banner: BannerMaker::new() }
+        Self { 
+            args: Cli::parse(), 
+            req: Requester::new(), 
+            banner: BannerMaker::new()
+        }
     }
 
     pub async fn run(&mut self){
