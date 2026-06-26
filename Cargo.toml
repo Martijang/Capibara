@@ -1,7 +1,9 @@
 [package]
-name = "http-larper"
+name = "Capibara"
 version = "0.1.0"
 edition = "2024"
+authors = ["Martijang"]
+
 
 [dependencies]
 anyhow = "1.0.103"
