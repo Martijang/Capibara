@@ -5,4 +5,4 @@ Capibara is a cli tool for making basic GET/POST requests.
 > I'm not Capybara! I'm Capi!bara!
 
 ### todo
-1. implement get/post request
+1. implement status argument
