@@ -75,8 +75,8 @@ impl App{
 
             t_vec.push(tokio::spawn(async move {
                 match req.request(&url, &method).await{
-                    Ok(req) => println!("url: {} status: {}", &*url, req.status),
-                    Err(e) => eprintln!("url: {} {:?}", &*url, e)
+                    Ok(req) => println!("url: {} status: {}", &url, req.status),
+                    Err(e) => eprintln!("url: {} {:?}", &url, e)
                 }
             }));
         }
@@ -92,8 +92,8 @@ impl App{
 
             t_vec.push(tokio::spawn(async move {
                 match req.request(&url, &method).await{
-                    Ok(req) => println!("url: {}\nbody:\n{}", &*url, req.body),
-                    Err(e) => eprintln!("url: {} {:?}", &*url, e)
+                    Ok(req) => println!("url: {}\nbody:\n{}", &url, req.body),
+                    Err(e) => eprintln!("url: {} {:?}", &url, e)
                 }
             }));
         }
