@@ -1,5 +1,5 @@
 use clap::Parser;
-use tokio::task::JoinHandle;
+use tokio::{runtime::{Builder, Runtime}, task::JoinHandle};
 use anyhow::Result;
 
 use crate::{banner::BannerMaker, requester::Requester};
@@ -8,15 +8,15 @@ use capibara::request::Method;
 use std::{fs::File, io::{BufRead, BufReader}, sync::Arc};
 
 
-///Basic GET/POST requester written in rust
+///basic GET/POST requester written in rust
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None, version)]
 struct Cli{
-    ///Url(s) to send request
+    ///url(s) to send the request
     #[arg(short, long, num_args =1..)]
     urls: Vec<String>,
 
-    ///Method to use. Default is GET
+    ///method to use. Default is GET
     #[arg(short, long, value_enum)]
     method: Option<Method>,
 
@@ -24,10 +24,15 @@ struct Cli{
     #[arg(short, long)]
     body: Option<bool>,
 
-    ///read a file and make request for each url.
+    ///read a file and send request for each url.
     ///all urls must be aligned line by line 
     #[arg(short, long)]
-    input: Option<String>
+    input: Option<String>,
+
+    ///manually setting number of the worker threads. Default is 1.
+    ///NOTE: there are no big performance difference
+    #[arg(short, long)]
+    threads: Option<usize>
 }
 
 #[derive(Debug)]
@@ -35,7 +40,8 @@ struct CliHolder{
     pub urls: Vec<String>,
     pub method: Arc<Option<Method>>,
     pub body: Option<bool>,
-    pub input: Option<String>
+    pub input: Option<String>,
+    pub threads: Option<usize>
 }
 
 #[derive(Debug)]
@@ -66,6 +72,24 @@ impl App{
         Ok(())
     }
 
+    pub fn runtime_init(&self) -> Result<Runtime>{
+        if let Some(threads) = self.args.threads{
+            return Ok(Builder::new_multi_thread()
+                .worker_threads(threads)
+                .enable_all()
+                .build()?);
+        }
+        Ok(
+            Builder::new_multi_thread()
+                .worker_threads(1)
+                .enable_all()
+                .build()?
+          )
+    }
+}
+
+//private functions
+impl App{
     async fn run_out_as_status(&self){
         let mut t_vec = Vec::new();
 
@@ -115,8 +139,6 @@ impl App{
             let file = File::open(path)?;
             let reader = BufReader::new(file);
 
-            self.args.urls.clear();
-
             for line in reader.lines(){
                 let line = line?.trim().to_string();
                 self.args.urls.push(line);
@@ -133,7 +155,8 @@ impl CliHolder{
             urls: cli.urls, 
             method: Arc::new(cli.method),
             body: cli.body, 
-            input: cli.input
+            input: cli.input,
+            threads: cli.threads,
         }
     }
 }
