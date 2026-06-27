@@ -7,6 +7,7 @@ use capibara::request::Method;
 
 use std::{fs::File, io::{BufRead, BufReader}, sync::Arc};
 
+
 ///Basic GET/POST requester written in rust
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None, version)]
