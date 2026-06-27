@@ -26,26 +26,4 @@ other features are currently under development
 
 ### todo
 1. implement output argument
-2. [Option] consider using tokio_scoped crate to solve 
-error[E0521]: borrowed data escapes outside of method
-   --> src\app.rs:95:24
-    |
- 88 |       async fn run_out_as_body(&self) {
-    |                                -----
-    |                                |
-    |                                `self` is a reference that is only valid in the method body
-    |                                let's call the lifetime of this reference `'1`
-...
- 95 |               t_vec.push(tokio::spawn(async move {
-    |  ________________________^
- 96 | |                 match req.request(&url, &method).await{
- 97 | |                     Ok(req) => println!("url: {}\nbody:\n{}", &url, req.body),
- 98 | |                     Err(e) => eprintln!("url: {} {:?}", &url, e)
- 99 | |                 }
-100 | |             }));
-    | |              ^
-    | |              |
-    | |______________`self` escapes the method body here
-    |                argument requires that `'1` must outlive `'static`
-since scoped spawn does not require 'static unlike tokio::spawn
-3. add tests
+2. add tests
