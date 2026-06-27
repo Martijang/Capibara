@@ -17,9 +17,15 @@ struct Cli{
     #[arg(short, long, value_enum)]
     method: Option<Method>,
 
-    ///print status code only. Default is No 
+    ///print response body only. Default is No 
     #[arg(short, long)]
-    status: Option<bool>
+    body: Option<bool>,
+
+    ///read a file and make request for each url.
+    ///all urls must be aligned line by line 
+    ///(Not implemented)
+    #[arg(short, long)]
+    input: Option<String>
 }
 
 #[allow(unused)]
@@ -41,8 +47,15 @@ impl App{
 
     pub async fn run(mut self){
         self.banner.print_banner();
+        let body = self.args.body.unwrap_or(false);
+        if body{
+            self.run_out_as_body().await;
+        }else{
+            self.run_out_as_status().await;
+        }
+    }
+    async fn run_out_as_status(&self){
         let mut t_vec = Vec::new();
-
         for url in self.args.urls.clone(){  
             let req = Arc::clone(&self.req);
             let arg = Arc::clone(&self.args);
@@ -50,6 +63,29 @@ impl App{
             t_vec.push(tokio::spawn(async move {
                 match req.request(&url, &arg.method).await{
                     Ok(req) => println!("url: {} status: {}", &*url, req.status),
+                    Err(e) => eprintln!("url: {} {:?}", &*url, e)
+                }
+            }));
+        }
+
+        for thread in t_vec{
+            let res = thread.await;
+            match res{
+                Ok(_) => {},
+                Err(e) => eprintln!("Join error {e}"),
+            }
+        }
+    }
+
+    async fn run_out_as_body(&self) {
+        let mut t_vec = Vec::new();
+        for url in self.args.urls.clone(){  
+            let req = Arc::clone(&self.req);
+            let arg = Arc::clone(&self.args);
+
+            t_vec.push(tokio::spawn(async move {
+                match req.request(&url, &arg.method).await{
+                    Ok(req) => println!("url: {}\n\n body: {}", &*url, req.body),
                     Err(e) => eprintln!("url: {} {:?}", &*url, e)
                 }
             }));
