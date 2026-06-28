@@ -6,7 +6,7 @@ TMI: Capibara is an extension of urlChecker which is removed repo.
 > [!NOTE]
 > I'm not Capybara! I'm Capi!bara!
 >
-> output as file might be or not supported
+> requesting with body is still experimental which means its not tested yet
 
 ## example
 to make basic request(s)
@@ -21,7 +21,7 @@ if you want to send the request(s) by using a input file
 ```
     ./capibara.exe -i /path/to/urls.txt
 ```
-other features are currently under development
+for more infomation run ./capibara.exe -help
 
 
 ### todo
