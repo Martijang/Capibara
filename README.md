@@ -1,6 +1,7 @@
 # Capibara
 Capibara is a cli tool for making basic GET/POST requests.
-TMI: Capibara is an extension of urlChecker which is removed repo.
+
+TMI: Capibara is an extension of urlChecker. Which is currently private repo.
 
 
 > [!NOTE]
