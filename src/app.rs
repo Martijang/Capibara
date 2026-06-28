@@ -42,9 +42,13 @@ struct Cli {
 
     ///writes result of request in to the file.
     ///when using this option keep in mind that the result will not shown in
-    ///terminal
+    ///the terminal
     #[arg(short, long)]
     output: Option<String>,
+
+    ///body to send with request
+    #[arg(short, long)]
+    request_body: Option<String>,
 }
 
 #[derive(Debug)]
@@ -55,6 +59,7 @@ struct CliHolder {
     pub input: Option<String>,
     pub threads: Option<usize>,
     pub output: Option<String>,
+    pub request_body: Arc<Option<String>>,
 }
 
 #[derive(Debug)]
@@ -109,9 +114,10 @@ impl App {
         for url in self.args.urls.clone() {
             let req = Arc::clone(&self.req);
             let method = Arc::clone(&self.args.method);
+            let body = Arc::clone(&self.args.request_body);
 
             t_vec.push(tokio::spawn(async move {
-                match req.request(&url, &method).await {
+                match req.request(&url, &method, &body).await {
                     Ok(req) => format!("url: {} status: {}\n", &url, req.status),
                     Err(e) => format!("url: {} {:?}\n", &url, e),
                 }
@@ -126,9 +132,10 @@ impl App {
         for url in self.args.urls.clone() {
             let req = Arc::clone(&self.req);
             let method = Arc::clone(&self.args.method);
+            let body = Arc::clone(&self.args.request_body);
 
             t_vec.push(tokio::spawn(async move {
-                match req.request(&url, &method).await {
+                match req.request(&url, &method, &body).await {
                     Ok(req) => format!("url: {}\nbody:\n{}\n", &url, req.body),
                     Err(e) => format!("url: {} {:?}\n", &url, e),
                 }
@@ -191,6 +198,7 @@ impl CliHolder {
             input: cli.input,
             threads: cli.threads,
             output: cli.output,
+            request_body: Arc::new(cli.request_body),
         }
     }
 }
