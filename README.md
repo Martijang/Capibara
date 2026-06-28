@@ -25,5 +25,4 @@ other features are currently under development
 
 
 ### todo
-1. implement output argument
-2. add tests
+1. add tests
