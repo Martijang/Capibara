@@ -15,18 +15,23 @@ impl Requester {
         }
     }
 
-    pub async fn request(&self, url: &str, method: &Option<Method>) -> Result<RequestResult> {
+    pub async fn request(
+        &self,
+        url: &str,
+        method: &Option<Method>,
+        body: &Option<String>,
+    ) -> Result<RequestResult> {
         if let Some(method) = method {
             match method {
                 Method::Get => {
-                    let res = self.get(url).await?;
+                    let res = self.get(url, body).await?;
                     Ok(RequestResult {
                         status: res.status,
                         body: res.body,
                     })
                 }
                 Method::Post => {
-                    let res = self.post(url).await?;
+                    let res = self.post(url, body).await?;
                     Ok(RequestResult {
                         status: res.status,
                         body: res.body,
@@ -34,7 +39,7 @@ impl Requester {
                 }
             }
         } else {
-            let res = self.get(url).await?;
+            let res = self.get(url, body).await?;
             Ok(RequestResult {
                 status: res.status,
                 body: res.body,
@@ -42,19 +47,43 @@ impl Requester {
         }
     }
 
-    async fn get(&self, url: &str) -> Result<RequestResult> {
-        let res = self.client.get(url).send().await?;
-        Ok(RequestResult {
-            status: res.status(),
-            body: res.text().await?,
-        })
+    async fn get(&self, url: &str, body: &Option<String>) -> Result<RequestResult> {
+        if let Some(content) = body {
+            let res = self.client.get(url).body(content.to_owned()).send().await?;
+
+            Ok(RequestResult {
+                status: res.status(),
+                body: res.text().await?,
+            })
+        } else {
+            let res = self.client.get(url).send().await?;
+            Ok(RequestResult {
+                status: res.status(),
+                body: res.text().await?,
+            })
+        }
     }
 
-    async fn post(&self, url: &str) -> Result<RequestResult> {
-        let res = self.client.post(url).send().await?;
-        Ok(RequestResult {
-            status: res.status(),
-            body: res.text().await?,
-        })
+    async fn post(&self, url: &str, body: &Option<String>) -> Result<RequestResult> {
+        if let Some(content) = body {
+            let res = self
+                .client
+                .post(url)
+                .body(content.to_owned())
+                .send()
+                .await?;
+
+            Ok(RequestResult {
+                status: res.status(),
+                body: res.text().await?,
+            })
+        } else {
+            let res = self.client.get(url).send().await?;
+
+            Ok(RequestResult {
+                status: res.status(),
+                body: res.text().await?,
+            })
+        }
     }
 }
