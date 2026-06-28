@@ -1,17 +1,23 @@
-use clap::Parser;
-use tokio::{runtime::{Builder, Runtime}, task::JoinHandle};
 use anyhow::Result;
+use clap::Parser;
+use tokio::{
+    runtime::{Builder, Runtime},
+    task::JoinHandle,
+};
 
 use crate::{banner::BannerMaker, requester::Requester};
 use capibara::request::Method;
 
-use std::{fs::File, io::{BufRead, BufReader}, sync::Arc};
-
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufRead, BufReader, Write},
+    sync::Arc,
+};
 
 ///basic GET/POST requester written in rust
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None, version)]
-struct Cli{
+struct Cli {
     ///url(s) to send the request
     #[arg(short, long, num_args =1..)]
     urls: Vec<String>,
@@ -20,143 +26,171 @@ struct Cli{
     #[arg(short, long, value_enum)]
     method: Option<Method>,
 
-    ///print response body only. Default is No 
+    ///print response body only. Default is No
     #[arg(short, long)]
     body: Option<bool>,
 
     ///read a file and send request for each url.
-    ///all urls must be aligned line by line 
+    ///all urls must be aligned line by line
     #[arg(short, long)]
     input: Option<String>,
 
     ///manually setting number of the worker threads. Default is 1.
     ///NOTE: there are no big performance difference
     #[arg(short, long)]
-    threads: Option<usize>
+    threads: Option<usize>,
+
+    ///writes result of request in to the file.
+    ///when using this option keep in mind that the result will not shown in
+    ///terminal
+    #[arg(short, long)]
+    output: Option<String>,
 }
 
 #[derive(Debug)]
-struct CliHolder{
+struct CliHolder {
     pub urls: Vec<String>,
     pub method: Arc<Option<Method>>,
     pub body: Option<bool>,
     pub input: Option<String>,
-    pub threads: Option<usize>
+    pub threads: Option<usize>,
+    pub output: Option<String>,
 }
 
 #[derive(Debug)]
-pub struct App{
+pub struct App {
     args: CliHolder,
     req: Arc<Requester>,
-    banner: BannerMaker
+    banner: BannerMaker,
 }
 
-impl App{
-    pub fn new() -> Self{
-        Self { 
-            args: CliHolder::new(), 
-            req: Arc::new(Requester::new()), 
-            banner: BannerMaker::new()
+impl App {
+    pub fn new() -> Self {
+        Self {
+            args: CliHolder::new(),
+            req: Arc::new(Requester::new()),
+            banner: BannerMaker::new(),
         }
     }
 
-    pub async fn run(mut self) -> Result<()>{
+    pub async fn run(mut self) -> Result<()> {
         self.banner.print_banner();
         self.read_file_by_line()?;
+        let mut file = self.open_file()?;
+
         let body = self.args.body.unwrap_or(false);
-        if body{
-            self.run_out_as_body().await;
-        }else{
-            self.run_out_as_status().await;
+
+        if body {
+            self.run_out_as_body(&mut file).await;
+        } else {
+            self.run_out_as_status(&mut file).await;
         }
         Ok(())
     }
 
-    pub fn runtime_init(&self) -> Result<Runtime>{
-        if let Some(threads) = self.args.threads{
+    pub fn runtime_init(&self) -> Result<Runtime> {
+        if let Some(threads) = self.args.threads {
             return Ok(Builder::new_multi_thread()
                 .worker_threads(threads)
                 .enable_all()
                 .build()?);
         }
-        Ok(
-            Builder::new_multi_thread()
-                .worker_threads(1)
-                .enable_all()
-                .build()?
-          )
+        Ok(Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()?)
     }
 }
 
 //private functions
-impl App{
-    async fn run_out_as_status(&self){
+impl App {
+    async fn run_out_as_status(&self, file: &mut Option<File>) {
         let mut t_vec = Vec::new();
-
-        for url in self.args.urls.clone(){  
+        for url in self.args.urls.clone() {
             let req = Arc::clone(&self.req);
             let method = Arc::clone(&self.args.method);
 
             t_vec.push(tokio::spawn(async move {
-                match req.request(&url, &method).await{
-                    Ok(req) => println!("url: {} status: {}", &url, req.status),
-                    Err(e) => eprintln!("url: {} {:?}", &url, e)
+                match req.request(&url, &method).await {
+                    Ok(req) => format!("url: {} status: {}\n", &url, req.status),
+                    Err(e) => format!("url: {} {:?}\n", &url, e),
                 }
             }));
         }
-        App::join(t_vec).await;
+        App::join(t_vec, file).await;
     }
 
-    async fn run_out_as_body(&self) {
+    async fn run_out_as_body(&self, file: &mut Option<File>) {
         let mut t_vec = Vec::new();
 
-        for url in self.args.urls.clone(){  
+        for url in self.args.urls.clone() {
             let req = Arc::clone(&self.req);
             let method = Arc::clone(&self.args.method);
 
             t_vec.push(tokio::spawn(async move {
-                match req.request(&url, &method).await{
-                    Ok(req) => println!("url: {}\nbody:\n{}", &url, req.body),
-                    Err(e) => eprintln!("url: {} {:?}", &url, e)
+                match req.request(&url, &method).await {
+                    Ok(req) => format!("url: {}\nbody:\n{}\n", &url, req.body),
+                    Err(e) => format!("url: {} {:?}\n", &url, e),
                 }
             }));
         }
-        App::join(t_vec).await;
+        App::join(t_vec, file).await;
     }
 
-    async fn join(t_vec: Vec<JoinHandle<()>>){
-        for thread in t_vec{
+    async fn join(t_vec: Vec<JoinHandle<String>>, file: &mut Option<File>) {
+        for thread in t_vec {
             let res = thread.await;
-            match res{
-                Ok(_) => {},
-                Err(e) => eprintln!("Join error {e}"),
+            if let Some(file) = file {
+                match res {
+                    Ok(s) => match file.write_all(s.as_bytes()) {
+                        Ok(_) => {}
+                        Err(e) => eprintln!("Cannot write to file : {e}"),
+                    },
+                    Err(e) => eprintln!("Join error {e}"),
+                }
+            } else {
+                match res {
+                    Ok(s) => print!("{s}"),
+                    Err(e) => eprintln!("{e}"),
+                }
             }
         }
     }
 
-    fn read_file_by_line(&mut self) -> Result<()>{
-        if let Some(path) = &self.args.input{
+    fn read_file_by_line(&mut self) -> Result<()> {
+        if let Some(path) = &self.args.input {
             let file = File::open(path)?;
             let reader = BufReader::new(file);
 
-            for line in reader.lines(){
+            for line in reader.lines() {
                 let line = line?.trim().to_string();
                 self.args.urls.push(line);
             }
         }
         Ok(())
     }
+
+    fn open_file(&self) -> Result<Option<File>> {
+        if let Some(path) = &self.args.output {
+            Ok(Some(
+                OpenOptions::new().create(true).append(true).open(path)?,
+            ))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
-impl CliHolder{
-    pub fn new() -> Self{
+impl CliHolder {
+    pub fn new() -> Self {
         let cli = Cli::parse();
-        Self { 
-            urls: cli.urls, 
+        Self {
+            urls: cli.urls,
             method: Arc::new(cli.method),
-            body: cli.body, 
+            body: cli.body,
             input: cli.input,
             threads: cli.threads,
+            output: cli.output,
         }
     }
 }
