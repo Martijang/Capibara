@@ -87,3 +87,27 @@ impl Requester {
         }
     }
 }
+
+#[cfg(test)]
+mod test{
+    use reqwest::StatusCode;
+    
+    use super::*;
+
+
+    #[tokio::test]
+    async fn try_get_request_to_example_com(){
+        let requester = Requester::new();
+
+        let status = requester.request("https://example.com", &Some(Method::Get), &None).await.unwrap();
+        assert_eq!(StatusCode::OK, status.status)
+    }
+
+    #[tokio::test]
+    async fn try_post_with_body_to_example_com(){
+        let requester = Requester::new();
+
+        let status = requester.request("https://example.com", &Some(Method::Post), &Some(String::from(""))).await.unwrap();
+        assert_eq!(StatusCode::METHOD_NOT_ALLOWED, status.status)
+    }
+}
