@@ -26,4 +26,4 @@ for more infomation run ./capibara.exe -help
 
 
 ### todo
-1. add tests
+1. [Option] handle error for for BannerMaker
