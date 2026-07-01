@@ -17,12 +17,12 @@ pub struct BannerMaker {
 impl Fonts {
     //I assume that this function will never fail(for now)
     //TODO: Fix this to handle error properly
-    pub fn new() -> Self {
-        Self {
-            standard: FIGlet::standard().unwrap(),
-            slant: FIGlet::slant().unwrap(),
-            future: Toilet::future().unwrap(),
-        }
+    pub fn new() -> Result<Self, String> {
+        Ok(Self {
+            standard: FIGlet::standard()?,
+            slant: FIGlet::slant()?,
+            future: Toilet::future()?,
+        })
     }
 
     pub fn standard_font(&self) -> FIGure<'_> {
@@ -41,7 +41,7 @@ impl Fonts {
 impl BannerMaker {
     pub fn new() -> Self {
         Self {
-            fonts: Fonts::new(),
+            fonts: Fonts::new().unwrap(),
             rng: rand::rng(),
         }
     }
@@ -58,5 +58,28 @@ impl BannerMaker {
 
     fn random_index(&mut self) -> u32 {
         self.rng.random_range(1..=3)
+    }
+}
+
+#[cfg(test)]
+mod test{
+
+
+use crate::banner::*;
+
+    #[test]
+    fn fonts_inited_successfuly(){
+        let fonts = Fonts::new();
+        assert!(fonts.is_ok())
+    }
+
+    #[test]
+    fn try_convert_without_panicing(){
+        let fonts = Fonts::new().unwrap();
+
+        //try running all these and hoping that it won't gonna panic
+        let _ = fonts.slant_font();
+        let _ = fonts.standard_font();
+        let _ = fonts.future_font();
     }
 }
